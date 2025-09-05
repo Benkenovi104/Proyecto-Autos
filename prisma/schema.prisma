@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Autos {
+  id         Int        @id @default(autoincrement())
+  marca      String?    @db.VarChar
+  modelo     String?    @db.VarChar
+  anio       Int?
+  patente    String?    @db.VarChar
+  usuario_id Int?
+  Usuarios   Usuarios?  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_autos")
+  Trabajos   Trabajos[]
+}
+
+model Estados {
+  id       Int        @id @default(autoincrement())
+  nombre   String?    @db.VarChar
+  Trabajos Trabajos[]
+}
+
+model Repuestos {
+  id                 Int                  @id @default(autoincrement())
+  nombre             String?              @db.VarChar
+  descripcion        String?              @db.VarChar
+  precio_unitario    Decimal?             @db.Decimal
+  stock              Int?
+  Trabajos_Repuestos Trabajos_Repuestos[] @ignore
+}
+
+model Rol {
+  id       Int        @id @default(autoincrement())
+  nombre   String?    @db.VarChar
+  Usuarios Usuarios[]
+}
+
+model Trabajos {
+  id                 Int                  @id @default(autoincrement())
+  fecha_ingreso      DateTime?            @db.Timestamp(6)
+  fecha_egreso       DateTime?            @db.Timestamp(6)
+  costo_mano_obra    Decimal?             @db.Decimal
+  usuario_id         Int?
+  auto_id            Int?
+  estado_id          Int?
+  notas              String?
+  Autos              Autos?               @relation(fields: [auto_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "autos_trabajos")
+  Estados            Estados?             @relation(fields: [estado_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "estados_trabajos")
+  Usuarios           Usuarios?            @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_trabajos")
+  Trabajos_Repuestos Trabajos_Repuestos[] @ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model Trabajos_Repuestos {
+  trabajo_id   Int?
+  repuesto_id  Int?
+  cantidad     Int?
+  precio_final Decimal?   @db.Decimal
+  Repuestos    Repuestos? @relation(fields: [repuesto_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "trabajos_repuestos_repuestos")
+  Trabajos     Trabajos?  @relation(fields: [trabajo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "trabajos_repuestos_trabajos")
+
+  @@ignore
+}
+
+model Usuarios {
+  id       Int        @id @default(autoincrement())
+  nombre   String?    @db.VarChar
+  apellido String?    @db.VarChar
+  mail     String?    @db.VarChar
+  telefono String?    @db.VarChar
+  rol_id   Int?
+  Autos    Autos[]
+  Trabajos Trabajos[]
+  Rol      Rol?       @relation(fields: [rol_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_rol")
+}
