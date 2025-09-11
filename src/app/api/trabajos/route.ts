@@ -5,13 +5,19 @@ const prisma = new PrismaClient();
 
 // GET: listar trabajos
 export async function GET() {
-  const trabajos = await prisma.trabajos.findMany();
+  const trabajos = await prisma.trabajos.findMany({
+    include: {
+      Autos: true,
+      Estados: true,
+      Usuarios: true,
+    },
+  });
   return NextResponse.json(trabajos);
 }
 
 // POST: crear trabajos
 export async function POST(req: Request) {
-  const data4 = await req.json();
-  const nuevoTrabajo = await prisma.trabajos.create({ data4 });
+  const data = await req.json();
+  const nuevoTrabajo = await prisma.trabajos.create({ data });
   return NextResponse.json(nuevoTrabajo);
 }
