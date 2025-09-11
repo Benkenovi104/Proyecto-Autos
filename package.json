@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint",
-    "test-db": "ts-node scripts/test-db.ts"
-  },
+  "dev": "next dev --turbopack",
+  "build": "next build --turbopack",
+  "start": "next start",
+  "lint": "eslint",
+  "test-db": "ts-node scripts/test-db.ts",
+  "postinstall": "prisma generate"
+},
   "dependencies": {
     "@prisma/client": "^6.16.0",
     "dotenv": "^17.2.2",
@@ -30,4 +31,6 @@
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }
+
+  
 }
