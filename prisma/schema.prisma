@@ -70,9 +70,12 @@ model Usuarios {
   id       Int        @id @default(autoincrement())
   nombre   String?    @db.VarChar
   apellido String?    @db.VarChar
-  mail     String?    @db.VarChar
+  mail     String     @unique @db.VarChar // Hacemos el email único y requerido
   telefono String?    @db.VarChar
+  password String     @db.VarChar // Agregamos campo de contraseña
   rol_id   Int?
+  created_at DateTime @default(now()) // Fecha de creación
+  updated_at DateTime @updatedAt // Fecha de actualización
   Autos    Autos[]
   Trabajos Trabajos[]
   Rol      Rol?       @relation(fields: [rol_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_rol")

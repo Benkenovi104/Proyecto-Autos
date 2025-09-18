@@ -1,6 +1,31 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/app/componentes/ui/button"
+import { LogOut } from "lucide-react"
 
 export function Header() {
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    // Cargar datos del usuario desde localStorage
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
+
+  const handleLogout = () => {
+    // Eliminar cookie
+    document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    // Eliminar datos del localStorage
+    localStorage.removeItem('user')
+    // Redirigir al login
+    router.push('/login')
+  }
+
   return (
     <header className="bg-red-500 text-white shadow-sm">
       <div className="container mx-auto px-4">
@@ -26,9 +51,17 @@ export function Header() {
             </nav>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm">admin@autogest.com</span>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-red-600">
-              ▼
+            <span className="text-sm">
+              {user ? `${user.nombre} ${user.apellido}` : 'Usuario'}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-red-600"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              Salir
             </Button>
           </div>
         </div>
