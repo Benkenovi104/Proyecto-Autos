@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test-db": "ts-node scripts/test-db.ts",
+    "format-db": "ts-node scripts/format-database.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
