@@ -7,9 +7,12 @@ const prisma = new PrismaClient();
 export async function GET() {
   const trabajos = await prisma.trabajos.findMany({
     include: {
-      Autos: true,
+      Autos: {
+        include: {
+          Usuarios: true
+        }
+      },
       Estados: true,
-      Usuarios: true,
     },
   });
   return NextResponse.json(trabajos);
