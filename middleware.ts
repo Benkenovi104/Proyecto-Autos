@@ -11,9 +11,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('auth-token')?.value
 
+  console.log(`Middleware: ${pathname}, has token: ${!!token}`)
+
   // Si está intentando acceder a una ruta protegida
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
+    console.log('Protected route accessed:', pathname)
     if (!token) {
+      console.log('No token found, redirecting to login')
       // Redirigir a login si no hay token
       return NextResponse.redirect(new URL('/login', request.url))
     }
@@ -21,27 +25,32 @@ export function middleware(request: NextRequest) {
     // Verificar que el token sea válido
     const user = verifyToken(token)
     if (!user) {
+      console.log('Invalid token, redirecting to login')
       // Token inválido, redirigir a login
       const response = NextResponse.redirect(new URL('/login', request.url))
       response.cookies.delete('auth-token')
       return response
     }
 
+    console.log('Valid token, allowing access')
     // Token válido, continuar
     return NextResponse.next()
   }
 
   // Si está intentando acceder a login/register y ya está autenticado
   if (authRoutes.includes(pathname)) {
+    console.log('Auth route accessed:', pathname)
     if (token) {
       const user = verifyToken(token)
       if (user) {
+        console.log('Already logged in, redirecting to dashboard')
         // Ya está logueado, redirigir al dashboard
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     }
   }
 
+  console.log('Allowing normal access to:', pathname)
   // Para todas las demás rutas, continuar normalmente
   return NextResponse.next()
 }

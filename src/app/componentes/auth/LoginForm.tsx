@@ -27,9 +27,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
     setLoading(true)
     setErrors({})
 
+    console.log('Login form submitted')
+
     try {
       // Validar datos del lado cliente
       const validatedData = loginSchema.parse(formData)
+      console.log('Form data validated')
 
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -39,9 +42,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
         body: JSON.stringify(validatedData),
       })
 
+      console.log('Login API response status:', response.status)
       const data = await response.json()
+      console.log('Login API response data:', data)
 
       if (!response.ok) {
+        console.log('Login failed:', data)
         if (data.details?.issues) {
           const fieldErrors: Record<string, string> = {}
           data.details.issues.forEach((issue: { path: string[]; message: string }) => {
@@ -54,8 +60,10 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
         return
       }
 
+      console.log('Login successful, calling onSuccess')
       onSuccess(data.token, data.user)
     } catch (error: unknown) {
+      console.error('Login error:', error)
       if (error instanceof ZodError) {
         const fieldErrors: Record<string, string> = {}
         error.issues.forEach((issue) => {

@@ -8,10 +8,13 @@ const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
   try {
+    console.log('Login API called')
     const body = await req.json()
+    console.log('Request body received, email:', body.mail)
     
     // Validar datos de entrada
     const validatedData = loginSchema.parse(body)
+    console.log('Data validated successfully')
     
     // Buscar usuario por email
     const user = await prisma.usuarios.findUnique({
@@ -27,21 +30,27 @@ export async function POST(req: Request) {
     })
     
     if (!user) {
+      console.log('User not found for email:', validatedData.mail)
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
       )
     }
+    
+    console.log('User found:', user.id, user.mail)
     
     // Verificar contraseña
     const passwordMatch = await bcrypt.compare(validatedData.password, user.password)
     
     if (!passwordMatch) {
+      console.log('Password mismatch for user:', user.id)
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
       )
     }
+    
+    console.log('Password verified successfully')
     
     // Generar token JWT
     const token = signToken({
@@ -49,10 +58,13 @@ export async function POST(req: Request) {
       email: user.mail
     })
     
+    console.log('Token generated successfully')
+    
     // Respuesta sin la contraseña
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     
+    console.log('Sending successful response')
     return NextResponse.json({
       message: "Login exitoso",
       user: userWithoutPassword,
