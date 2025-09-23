@@ -64,12 +64,24 @@ export async function POST(req: Request) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     
-    console.log('Sending successful response')
-    return NextResponse.json({
+    // Crear la respuesta con la cookie establecida del lado del servidor
+    const response = NextResponse.json({
       message: "Login exitoso",
       user: userWithoutPassword,
       token
     })
+    
+    // Establecer la cookie del lado del servidor (más confiable)
+    response.cookies.set('auth-token', token, {
+      httpOnly: false, // Permitir acceso desde JavaScript para debugging
+      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 días en segundos
+      path: '/'
+    })
+    
+    console.log('Cookie set server-side, sending successful response')
+    return response
     
   } catch (error) {
     console.error('Error en login:', error)

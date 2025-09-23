@@ -60,11 +60,23 @@ export async function POST(req: Request) {
       email: user.mail
     })
     
-    return NextResponse.json({
+    // Crear la respuesta con la cookie establecida del lado del servidor
+    const response = NextResponse.json({
       message: "Usuario registrado exitosamente",
       user,
       token
     }, { status: 201 })
+    
+    // Establecer la cookie del lado del servidor (consistente con login)
+    response.cookies.set('auth-token', token, {
+      httpOnly: false, // Permitir acceso desde JavaScript para debugging
+      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 días en segundos
+      path: '/'
+    })
+    
+    return response
     
   } catch (error) {
     console.error('Error en registro:', error)

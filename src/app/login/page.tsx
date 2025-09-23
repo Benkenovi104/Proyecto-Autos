@@ -1,44 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { LoginForm } from "@/app/componentes/auth/LoginForm"
 import { RegisterForm } from "@/app/componentes/auth/RegisterForm"
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
-  const router = useRouter()
 
-  const handleAuthSuccess = (token: string, user: Record<string, unknown>) => {
+  const handleAuthSuccess = async (token: string, user: Record<string, unknown>) => {
     console.log('Auth success, token received:', !!token)
     console.log('User data:', user)
     
-    // Guardar token en cookie con configuración más robusta
-    const isProduction = window.location.hostname !== 'localhost'
-    const cookieOptions = [
-      `auth-token=${token}`,
-      'path=/',
-      `max-age=${7 * 24 * 60 * 60}`, // 7 días
-      isProduction ? 'secure' : '', // Solo HTTPS en producción
-      'samesite=lax'
-    ].filter(Boolean).join('; ')
-    
-    document.cookie = cookieOptions
-    console.log('Cookie set:', cookieOptions)
-    
-    // Guardar datos del usuario en localStorage (opcional)
+    // Guardar datos del usuario en localStorage (opcional para acceso rápido)
     localStorage.setItem('user', JSON.stringify(user))
     console.log('User data saved to localStorage')
     
-    // Redirigir al dashboard - usar window.location en producción para forzar reload
+    // La cookie ya se estableció del lado del servidor, redirigir directamente
     console.log('Redirecting to dashboard...')
-    if (isProduction) {
-      // En producción, usar window.location para forzar el reload
-      window.location.href = '/dashboard'
-    } else {
-      // En desarrollo, usar router.push
-      router.push('/dashboard')
-    }
+    // Usar window.location para asegurar que la página se recarga y middleware pueda leer la cookie
+    window.location.href = '/dashboard'
   }
 
   return (
