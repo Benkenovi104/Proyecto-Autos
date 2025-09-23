@@ -73,11 +73,12 @@ export async function POST(req: Request) {
     
     // Establecer la cookie del lado del servidor (más confiable)
     response.cookies.set('auth-token', token, {
-      httpOnly: false, // Permitir acceso desde JavaScript para debugging
-      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+      httpOnly: false, // Permitir acceso desde JavaScript
+      secure: true, // SIEMPRE usar secure en producción de Vercel
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 días en segundos
-      path: '/'
+      path: '/',
+      domain: process.env.NODE_ENV === 'production' ? '.vercel.app' : undefined
     })
     
     console.log('Cookie set server-side, sending successful response')

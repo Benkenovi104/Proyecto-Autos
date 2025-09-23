@@ -15,10 +15,33 @@ export default function AuthPage() {
     localStorage.setItem('user', JSON.stringify(user))
     console.log('User data saved to localStorage')
     
-    // La cookie ya se estableció del lado del servidor, redirigir directamente
-    console.log('Redirecting to dashboard...')
-    // Usar window.location para asegurar que la página se recarga y middleware pueda leer la cookie
-    window.location.href = '/dashboard'
+    // Verificar si la cookie se estableció del lado del servidor
+    const cookieCheck = document.cookie.includes('auth-token=')
+    console.log('Server-side cookie check:', cookieCheck)
+    
+    if (!cookieCheck) {
+      console.log('Server cookie not found, setting client-side as fallback')
+      // Fallback: establecer cookie del lado del cliente si el servidor falló
+      const isProduction = window.location.hostname.includes('vercel.app')
+      const cookieOptions = [
+        `auth-token=${token}`,
+        'path=/',
+        `max-age=${7 * 24 * 60 * 60}`, // 7 días
+        isProduction ? 'secure' : '',
+        'samesite=lax'
+      ].filter(Boolean).join('; ')
+      
+      document.cookie = cookieOptions
+      console.log('Client-side cookie set:', cookieOptions)
+    }
+    
+    // Esperar un momento para asegurar que la cookie esté disponible
+    setTimeout(() => {
+      console.log('Final cookie verification:', document.cookie.includes('auth-token='))
+      console.log('Redirecting to dashboard...')
+      // Usar window.location para asegurar que la página se recarga y middleware pueda leer la cookie
+      window.location.href = '/dashboard'
+    }, 200)
   }
 
   return (

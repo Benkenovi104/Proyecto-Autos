@@ -10,8 +10,12 @@ const authRoutes = ['/login', '/register']
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('auth-token')?.value
+  const allCookies = request.cookies.getAll()
 
-  console.log(`🔍 Middleware: ${pathname}, has token: ${!!token}`)
+  console.log(`🔍 Middleware: ${pathname}`)
+  console.log(`🍪 Has auth-token: ${!!token}`)
+  console.log(`🍪 All cookies:`, allCookies.map(c => `${c.name}=${c.value?.substring(0, 10)}...`))
+  
   if (token) {
     console.log(`🔑 Token preview: ${token.substring(0, 20)}...`)
   }
