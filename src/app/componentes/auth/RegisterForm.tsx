@@ -6,9 +6,10 @@ import { Input } from "@/app/componentes/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/componentes/ui/card"
 import { registerSchema, type RegisterData } from "@/lib/validations/auth"
 import { Eye, EyeOff, UserPlus, Mail, Lock, User, Phone } from "lucide-react"
+import { ZodError } from "zod"
 
 interface RegisterFormProps {
-  onSuccess: (token: string, user: any) => void
+  onSuccess: (token: string, user: Record<string, unknown>) => void
   onSwitchToLogin: () => void
 }
 
@@ -48,7 +49,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       if (!response.ok) {
         if (data.details?.issues) {
           const fieldErrors: Record<string, string> = {}
-          data.details.issues.forEach((issue: any) => {
+          data.details.issues.forEach((issue: { path: string[]; message: string }) => {
             fieldErrors[issue.path[0]] = issue.message
           })
           setErrors(fieldErrors)
@@ -59,10 +60,10 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       }
 
       onSuccess(data.token, data.user)
-    } catch (error: any) {
-      if (error.issues) {
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
         const fieldErrors: Record<string, string> = {}
-        error.issues.forEach((issue: any) => {
+        error.issues.forEach((issue) => {
           fieldErrors[issue.path[0]] = issue.message
         })
         setErrors(fieldErrors)

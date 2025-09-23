@@ -9,7 +9,7 @@ export function signToken(payload: { userId: number; email: string }) {
 export function verifyToken(token: string) {
   try {
     return jwt.verify(token, JWT_SECRET) as { userId: number; email: string }
-  } catch (error) {
+  } catch {
     return null
   }
 }

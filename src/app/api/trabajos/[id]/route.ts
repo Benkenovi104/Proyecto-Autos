@@ -25,10 +25,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       data,
     });
     return NextResponse.json(trabajo);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al actualizar trabajo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: "Error al actualizar el trabajo", details: error.message },
+      { error: "Error al actualizar el trabajo", details: errorMessage },
       { status: 500 }
     );
   }
@@ -39,10 +40,11 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     await prisma.trabajos.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({ message: "Trabajo eliminado" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al eliminar trabajo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: "Error al eliminar el trabajo", details: error.message },
+      { error: "Error al eliminar el trabajo", details: errorMessage },
       { status: 500 }
     );
   }

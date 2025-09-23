@@ -5,8 +5,13 @@ import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/app/componentes/ui/button"
 import { LogOut } from "lucide-react"
 
+interface User {
+  nombre: string
+  apellido: string
+}
+
 export function Header() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 

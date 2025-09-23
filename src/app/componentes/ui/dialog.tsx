@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X } from "lucide-react"
-import { Button } from "./button"
+// X and Button imports removed as they are not used in this component
 
 interface DialogProps {
   open: boolean

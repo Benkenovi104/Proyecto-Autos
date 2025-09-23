@@ -10,7 +10,7 @@ import { Input } from "@/app/componentes/ui/input"
 import { Label } from "@/app/componentes/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/componentes/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/componentes/ui/dialog"
-import { Car, Users, Wrench, AlertTriangle, Plus, Search, Edit, Trash2, ChevronDown, ChevronUp, X } from "lucide-react"
+import { Car, Users, Wrench, AlertTriangle, Plus, Edit, Trash2, ChevronDown, ChevronUp, X } from "lucide-react"
 
 interface DashboardStats {
   totalAutos: number
@@ -32,6 +32,36 @@ interface RecentWork {
   fecha_egreso?: string
 }
 
+interface Trabajo {
+  id: number
+  auto_id: number
+  estado_id: number
+  fecha_ingreso?: string
+  Estados?: { nombre: string }
+  Autos?: { modelo: string; marca: string; anio: number; Usuarios?: { nombre: string; apellido: string } }
+  notas?: string
+  costo_mano_obra?: number
+  fecha_egreso?: string
+}
+
+interface Repuesto {
+  id: number
+  stock: number
+}
+
+interface Auto {
+  id: number
+  modelo: string
+  marca: string
+  anio: number
+}
+
+interface Usuario {
+  id: number
+  nombre: string
+  apellido: string
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalAutos: 0,
@@ -39,12 +69,12 @@ export default function Dashboard() {
     trabajosActivos: 0,
     repuestosBajos: 0
   })
-  const [recentWork, setRecentWork] = useState<RecentWork[]>([])
+  // const [recentWork, setRecentWork] = useState<RecentWork[]>([])  // No se usa en la renderización actual
   const [allWork, setAllWork] = useState<RecentWork[]>([]) // Todos los trabajos
   const [filteredWork, setFilteredWork] = useState<RecentWork[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedWork, setExpandedWork] = useState<number | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
+  // const [searchQuery, setSearchQuery] = useState("")  // No se usa en la UI actual
   const [filterType, setFilterType] = useState<string>("")
   const [filterValue, setFilterValue] = useState<string>("todos")
   const [availableFilterOptions, setAvailableFilterOptions] = useState<string[]>([])
@@ -176,7 +206,7 @@ export default function Dashboard() {
           console.error('Error del servidor:', errorData);
           alert(`Error al eliminar: ${errorData.error || 'Error del servidor'}`);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error de conexión:', error);
         alert('Error de conexión al eliminar el trabajo. Verifica que la base de datos esté activa.');
       }
@@ -270,7 +300,7 @@ export default function Dashboard() {
         console.error('Error:', errorData)
         alert(`Error al actualizar el trabajo: ${errorData.error}`)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error:', error)
       alert('Error de conexión al actualizar el trabajo')
     }
@@ -285,10 +315,10 @@ export default function Dashboard() {
       const repuestosRes = await fetch('/api/repuestos');
 
       // Verificar si las respuestas son exitosas
-      let autos = [];
-      let usuarios = [];
-      let trabajos = [];
-      let repuestos = [];
+      let autos: Auto[] = [];
+      let usuarios: Usuario[] = [];
+      let trabajos: Trabajo[] = [];
+      let repuestos: Repuesto[] = [];
 
       if (autosRes.ok) {
         try {
@@ -327,25 +357,25 @@ export default function Dashboard() {
       }
 
       // Calcular repuestos con stock bajo (stock <= 10)
-      const repuestosBajos = repuestos.filter((r: any) => r.stock <= 10).length
+      const repuestosBajos = repuestos.filter((r: Repuesto) => r.stock <= 10).length
 
       setStats({
         totalAutos: autos.length || 0,
         totalUsuarios: usuarios.length || 0,
-        trabajosActivos: trabajos.filter((t: any) => t.Estados?.nombre === 'En proceso').length || 0,
+        trabajosActivos: trabajos.filter((t: Trabajo) => t.Estados?.nombre === 'En proceso').length || 0,
         repuestosBajos: repuestosBajos
       })
 
       // Cargar trabajos recientes (últimos 3) con datos completos
       const trabajosOrdenados = trabajos
-        .sort((a: any, b: any) => {
+        .sort((a: Trabajo, b: Trabajo) => {
           const fechaA = a.fecha_ingreso ? new Date(a.fecha_ingreso).getTime() : 0;
           const fechaB = b.fecha_ingreso ? new Date(b.fecha_ingreso).getTime() : 0;
           return fechaB - fechaA;
         });
 
       // Mapear TODOS los trabajos
-      const todosTrabajosFormateados = trabajosOrdenados.map((trabajo: any) => ({
+      const todosTrabajosFormateados = trabajosOrdenados.map((trabajo: Trabajo) => ({
         id: trabajo.id,
         auto_id: trabajo.auto_id,
         estado_id: trabajo.estado_id,
@@ -368,7 +398,7 @@ export default function Dashboard() {
               } else {
                 return '';
               }
-            } catch (error) {
+            } catch {
               return '';
             }
           })() : '',
@@ -396,7 +426,7 @@ export default function Dashboard() {
 
       // Guardar todos los trabajos y solo los 3 recientes
       setAllWork(todosTrabajosFormateados);
-      setRecentWork(todosTrabajosFormateados.slice(0, 3));
+      // setRecentWork(todosTrabajosFormateados.slice(0, 3));  // Comentado porque recentWork no se usa
       setFilteredWork(todosTrabajosFormateados.slice(0, 3));
       setLoading(false)
     } catch (error) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Header } from "@/app/componentes/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/componentes/ui/card"
 import { Button } from "@/app/componentes/ui/button"
@@ -20,22 +20,37 @@ interface Trabajo {
   fecha_egreso?: string
 }
 
+interface TrabajoAPI {
+  id: number
+  Autos?: {
+    marca: string
+    modelo: string
+    Usuarios?: {
+      nombre: string
+      apellido: string
+    }
+  }
+  Estados?: {
+    nombre: string
+  }
+  notas?: string
+  costo_mano_obra?: number
+  fecha_egreso?: string
+  fecha_ingreso?: string
+}
+
 export default function TrabajosPage() {
   const [trabajos, setTrabajos] = useState<Trabajo[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
 
-  useEffect(() => {
-    loadTrabajos()
-  }, [])
-
-  const loadTrabajos = async () => {
+  const loadTrabajos = useCallback(async () => {
     try {
       const response = await fetch('/api/trabajos')
       if (response.ok) {
-        const data = await response.json()
-        const trabajosFormateados = data.map((trabajo: any) => ({
+        const data: TrabajoAPI[] = await response.json()
+        const trabajosFormateados = data.map((trabajo: TrabajoAPI) => ({
           id: trabajo.id,
           auto: trabajo.Autos ? `${trabajo.Autos.marca} ${trabajo.Autos.modelo}` : 'Vehículo no asignado',
           cliente: trabajo.Autos?.Usuarios ? `${trabajo.Autos.Usuarios.nombre} ${trabajo.Autos.Usuarios.apellido}` : 'Cliente no asignado',
@@ -52,7 +67,11 @@ export default function TrabajosPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadTrabajos()
+  }, [loadTrabajos])
 
   const formatDate = (dateString: string) => {
     try {

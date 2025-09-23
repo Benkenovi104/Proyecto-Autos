@@ -288,7 +288,7 @@ export default function UsuariosPage() {
                           <td className="py-3 px-4">
                             <div className="flex flex-col space-y-1">
                               {usuario.autos && usuario.autos.length > 0 ? (
-                                usuario.autos.slice(0, 2).map((auto, index) => (
+                                usuario.autos.slice(0, 2).map((auto) => (
                                   <Badge key={auto.id} variant="outline" className="text-xs">
                                     {auto.marca} {auto.modelo} ({auto.patente})
                                   </Badge>

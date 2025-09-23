@@ -9,7 +9,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const router = useRouter()
 
-  const handleAuthSuccess = (token: string, user: any) => {
+  const handleAuthSuccess = (token: string, user: Record<string, unknown>) => {
     // Guardar token en cookie
     document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 días
     
