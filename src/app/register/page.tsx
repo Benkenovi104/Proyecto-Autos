@@ -10,14 +10,31 @@ export default function RegisterPage() {
   const router = useRouter()
 
   const handleAuthSuccess = (token: string, user: Record<string, unknown>) => {
-    // Guardar token en cookie
-    document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}` // 7 días
+    console.log('Auth success, token received:', !!token)
+    
+    // Guardar token en cookie con configuración más robusta
+    const isProduction = window.location.hostname !== 'localhost'
+    const cookieOptions = [
+      `auth-token=${token}`,
+      'path=/',
+      `max-age=${7 * 24 * 60 * 60}`, // 7 días
+      isProduction ? 'secure' : '', // Solo HTTPS en producción
+      'samesite=lax'
+    ].filter(Boolean).join('; ')
+    
+    document.cookie = cookieOptions
     
     // Guardar datos del usuario en localStorage (opcional)
     localStorage.setItem('user', JSON.stringify(user))
     
-    // Redirigir al dashboard
-    router.push('/dashboard')
+    // Redirigir al dashboard - usar window.location en producción para forzar reload
+    if (isProduction) {
+      // En producción, usar window.location para forzar el reload
+      window.location.href = '/dashboard'
+    } else {
+      // En desarrollo, usar router.push
+      router.push('/dashboard')
+    }
   }
 
   return (

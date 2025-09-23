@@ -30,11 +30,15 @@ export default function AuthPage() {
     localStorage.setItem('user', JSON.stringify(user))
     console.log('User data saved to localStorage')
     
-    // Redirigir al dashboard con un pequeño delay para asegurar que todo se guarde
-    setTimeout(() => {
-      console.log('Redirecting to dashboard...')
+    // Redirigir al dashboard - usar window.location en producción para forzar reload
+    console.log('Redirecting to dashboard...')
+    if (isProduction) {
+      // En producción, usar window.location para forzar el reload
+      window.location.href = '/dashboard'
+    } else {
+      // En desarrollo, usar router.push
       router.push('/dashboard')
-    }, 100)
+    }
   }
 
   return (
