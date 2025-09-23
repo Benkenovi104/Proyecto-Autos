@@ -6,7 +6,11 @@ import { Header } from "@/app/componentes/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/componentes/ui/card"
 import { Button } from "@/app/componentes/ui/button"
 import { Badge } from "@/app/componentes/ui/badge"
-import { Car, Users, Wrench, AlertTriangle, Plus, Search } from "lucide-react"
+import { Input } from "@/app/componentes/ui/input"
+import { Label } from "@/app/componentes/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/componentes/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/componentes/ui/dialog"
+import { Car, Users, Wrench, AlertTriangle, Plus, Search, Edit, Trash2, ChevronDown, ChevronUp, X } from "lucide-react"
 
 interface DashboardStats {
   totalAutos: number
@@ -17,10 +21,15 @@ interface DashboardStats {
 
 interface RecentWork {
   id: number
+  auto_id: number
+  estado_id: number
   auto: string
   cliente: string
   estado: string
   fecha: string
+  notas?: string
+  costo_mano_obra?: number
+  fecha_egreso?: string
 }
 
 export default function Dashboard() {
@@ -31,12 +40,241 @@ export default function Dashboard() {
     repuestosBajos: 0
   })
   const [recentWork, setRecentWork] = useState<RecentWork[]>([])
+  const [allWork, setAllWork] = useState<RecentWork[]>([]) // Todos los trabajos
+  const [filteredWork, setFilteredWork] = useState<RecentWork[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedWork, setExpandedWork] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterType, setFilterType] = useState<string>("")
+  const [filterValue, setFilterValue] = useState<string>("todos")
+  const [availableFilterOptions, setAvailableFilterOptions] = useState<string[]>([])
+  const [showNewWorkModal, setShowNewWorkModal] = useState(false)
+  const [showAllWorks, setShowAllWorks] = useState(false)
+  const [autos, setAutos] = useState<{id: number, marca: string, modelo: string, anio: number, patente: string}[]>([])
+  const [estados, setEstados] = useState<{id: number, nombre: string}[]>([])
+  const [newWork, setNewWork] = useState({
+    auto_id: "",
+    estado_id: "",
+    notas: "",
+    costo_mano_obra: ""
+  })
+  const [showEditWorkModal, setShowEditWorkModal] = useState(false)
+  const [editingWork, setEditingWork] = useState<RecentWork | null>(null)
+  const [editWork, setEditWork] = useState({
+    auto_id: "",
+    estado_id: "",
+    notas: "",
+    costo_mano_obra: ""
+  })
   const router = useRouter()
 
   useEffect(() => {
     loadDashboardData()
+    loadModalData()
   }, [])
+
+  const loadModalData = async () => {
+    try {
+      // Cargar autos
+      const autosResponse = await fetch('/api/autos')
+      if (autosResponse.ok) {
+        const autosData = await autosResponse.json()
+        setAutos(autosData)
+      }
+
+      // Cargar estados
+      const estadosResponse = await fetch('/api/estados')
+      if (estadosResponse.ok) {
+        const estadosData = await estadosResponse.json()
+        setEstados(estadosData)
+      }
+    } catch (error) {
+      console.error('Error loading modal data:', error)
+    }
+  }
+
+  // Efecto para filtrar trabajos
+  useEffect(() => {
+    let filtered = allWork
+    
+    // Aplicar filtro según tipo y valor seleccionado
+    if (filterType !== 'todos' && filterValue !== 'todos') {
+      filtered = filtered.filter(trabajo => {
+        switch (filterType) {
+          case 'marca':
+            return trabajo.auto.split(' ')[0].toLowerCase() === filterValue.toLowerCase()
+          case 'modelo':
+            const partes = trabajo.auto.split(' ')
+            const modelo = partes.length > 1 ? partes[1] : ''
+            return modelo.toLowerCase() === filterValue.toLowerCase()
+          case 'cliente':
+            return trabajo.cliente === filterValue
+          case 'estado':
+            return trabajo.estado === filterValue
+          default:
+            return true
+        }
+      })
+    }
+    
+    // Limitar cantidad si no se muestra todo
+    const displayWork = showAllWorks ? filtered : filtered.slice(0, 3)
+    setFilteredWork(displayWork)
+  }, [filterType, filterValue, allWork, showAllWorks])
+
+  // Función para actualizar las opciones disponibles según el tipo de filtro
+  useEffect(() => {
+    if (allWork.length > 0 && filterType !== 'todos') {
+      let options: string[] = []
+      
+      switch (filterType) {
+        case 'marca':
+          options = [...new Set(allWork.map(trabajo => trabajo.auto.split(' ')[0]))].sort()
+          break
+        case 'modelo':
+          options = [...new Set(allWork.map(trabajo => {
+            const partes = trabajo.auto.split(' ')
+            return partes.length > 1 ? partes[1] : ''
+          }).filter(modelo => modelo !== ''))].sort()
+          break
+        case 'cliente':
+          options = [...new Set(allWork.map(trabajo => trabajo.cliente))].sort()
+          break
+        case 'estado':
+          options = [...new Set(allWork.map(trabajo => trabajo.estado))].sort()
+          break
+      }
+      
+      setAvailableFilterOptions(options)
+      setFilterValue('todos') // Reset value when type changes
+    } else {
+      setAvailableFilterOptions([])
+      setFilterValue('todos')
+    }
+  }, [filterType, allWork])
+
+  const toggleExpand = (workId: number) => {
+    setExpandedWork(expandedWork === workId ? null : workId)
+  }
+
+  const handleDeleteWork = async (workId: number) => {
+    if (confirm('¿Estás seguro de que quieres eliminar este trabajo?')) {
+      try {
+        const response = await fetch(`/api/trabajos/${workId}`, { 
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          // Recargar datos después de eliminar
+          await loadDashboardData();
+          alert('Trabajo eliminado exitosamente');
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+          console.error('Error del servidor:', errorData);
+          alert(`Error al eliminar: ${errorData.error || 'Error del servidor'}`);
+        }
+      } catch (error: any) {
+        console.error('Error de conexión:', error);
+        alert('Error de conexión al eliminar el trabajo. Verifica que la base de datos esté activa.');
+      }
+    }
+  }
+
+  const handleCreateWork = async () => {
+    try {
+      const response = await fetch('/api/trabajos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          auto_id: parseInt(newWork.auto_id),
+          estado_id: parseInt(newWork.estado_id),
+          notas: newWork.notas,
+          costo_mano_obra: parseFloat(newWork.costo_mano_obra) || 0,
+          fecha_ingreso: new Date().toISOString(),
+        }),
+      })
+
+      if (response.ok) {
+        setShowNewWorkModal(false)
+        setNewWork({
+          auto_id: "",
+          estado_id: "",
+          notas: "",
+          costo_mano_obra: ""
+        })
+        loadDashboardData() // Recargar datos
+      } else {
+        const error = await response.text()
+        console.error('Error:', error)
+        alert('Error al crear el trabajo')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al crear el trabajo')
+    }
+  }
+
+  const handleEditWork = (work: RecentWork) => {
+    setEditingWork(work)
+    setEditWork({
+      auto_id: "", // No se usa ya que el vehículo no se puede cambiar
+      estado_id: work.estado, // Usar el nombre del estado directamente
+      notas: work.notas || "",
+      costo_mano_obra: work.costo_mano_obra?.toString() || ""
+    })
+    setShowEditWorkModal(true)
+  }
+
+  const handleUpdateWork = async () => {
+    if (!editingWork) return
+    
+    try {
+      // Encontrar el ID del estado por su nombre
+      const estadoSeleccionado = estados.find(estado => estado.nombre === editWork.estado_id)
+      if (!estadoSeleccionado) {
+        alert('Error: Estado no válido')
+        return
+      }
+
+      const response = await fetch(`/api/trabajos/${editingWork.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          auto_id: editingWork.auto_id, // Usar el auto_id original, no se puede cambiar
+          estado_id: estadoSeleccionado.id, // Convertir nombre a ID
+          notas: editWork.notas,
+          costo_mano_obra: parseFloat(editWork.costo_mano_obra) || 0,
+        }),
+      });
+
+      if (response.ok) {
+        setShowEditWorkModal(false)
+        setEditingWork(null)
+        setEditWork({
+          auto_id: "",
+          estado_id: "",
+          notas: "",
+          costo_mano_obra: ""
+        })
+        loadDashboardData() // Recargar datos
+        alert('Trabajo actualizado exitosamente')
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('Error:', errorData)
+        alert(`Error al actualizar el trabajo: ${errorData.error}`)
+      }
+    } catch (error: any) {
+      console.error('Error:', error)
+      alert('Error de conexión al actualizar el trabajo')
+    }
+  }
 
   const loadDashboardData = async () => {
     try {
@@ -98,45 +336,68 @@ export default function Dashboard() {
         repuestosBajos: repuestosBajos
       })
 
-      // Cargar trabajos recientes (últimos 5) con datos completos
-      const trabajosRecientes = trabajos
+      // Cargar trabajos recientes (últimos 3) con datos completos
+      const trabajosOrdenados = trabajos
         .sort((a: any, b: any) => {
           const fechaA = a.fecha_ingreso ? new Date(a.fecha_ingreso).getTime() : 0;
           const fechaB = b.fecha_ingreso ? new Date(b.fecha_ingreso).getTime() : 0;
           return fechaB - fechaA;
-        })
-        .slice(0, 5)
-        .map((trabajo: any) => ({
-          id: trabajo.id,
-          auto: trabajo.Autos ? `${trabajo.Autos.marca} ${trabajo.Autos.modelo}` : 'Vehículo no asignado',
-          cliente: trabajo.Autos?.Usuarios ? `${trabajo.Autos.Usuarios.nombre} ${trabajo.Autos.Usuarios.apellido}` : 'Cliente no asignado',
-          estado: trabajo.Estados?.nombre || 'Sin estado',
-          fecha: trabajo.fecha_ingreso ? 
-            (() => {
-              try {
-                // Si la fecha viene en formato ISO string, extraemos solo la parte de la fecha
-                const fechaStr = trabajo.fecha_ingreso.toString();
-                if (fechaStr.includes('T')) {
-                  // Formato: "2024-01-12T00:00:00.000Z" -> "2024-01-12"
-                  const soloFecha = fechaStr.split('T')[0];
-                  const [year, month, day] = soloFecha.split('-');
-                  return `${day}/${month}/${year}`;
-                } else if (fechaStr.includes('-')) {
-                  // Formato: "2024-01-12" 
-                  const [year, month, day] = fechaStr.split('-');
-                  return `${day}/${month}/${year}`;
-                } else {
-                  return 'Formato de fecha no válido';
-                }
-              } catch (error) {
-                console.error('Error parsing date:', trabajo.fecha_ingreso, error);
-                return 'Error en fecha';
-              }
-            })() : 
-            'Sin fecha'
-        }))
+        });
 
-      setRecentWork(trabajosRecientes)
+      // Mapear TODOS los trabajos
+      const todosTrabajosFormateados = trabajosOrdenados.map((trabajo: any) => ({
+        id: trabajo.id,
+        auto_id: trabajo.auto_id,
+        estado_id: trabajo.estado_id,
+        auto: trabajo.Autos ? `${trabajo.Autos.marca} ${trabajo.Autos.modelo}` : 'Vehículo no asignado',
+        cliente: trabajo.Autos?.Usuarios ? `${trabajo.Autos.Usuarios.nombre} ${trabajo.Autos.Usuarios.apellido}` : 'Cliente no asignado',
+        estado: trabajo.Estados?.nombre || 'Sin estado',
+        notas: trabajo.notas || '',
+        costo_mano_obra: trabajo.costo_mano_obra || 0,
+        fecha_egreso: trabajo.fecha_egreso ? 
+          (() => {
+            try {
+              const fechaStr = trabajo.fecha_egreso.toString();
+              if (fechaStr.includes('T')) {
+                const soloFecha = fechaStr.split('T')[0];
+                const [year, month, day] = soloFecha.split('-');
+                return `${day}/${month}/${year}`;
+              } else if (fechaStr.includes('-')) {
+                const [year, month, day] = fechaStr.split('-');
+                return `${day}/${month}/${year}`;
+              } else {
+                return '';
+              }
+            } catch (error) {
+              return '';
+            }
+          })() : '',
+        fecha: trabajo.fecha_ingreso ? 
+          (() => {
+            try {
+              const fechaStr = trabajo.fecha_ingreso.toString();
+              if (fechaStr.includes('T')) {
+                const soloFecha = fechaStr.split('T')[0];
+                const [year, month, day] = soloFecha.split('-');
+                return `${day}/${month}/${year}`;
+              } else if (fechaStr.includes('-')) {
+                const [year, month, day] = fechaStr.split('-');
+                return `${day}/${month}/${year}`;
+              } else {
+                return 'Formato de fecha no válido';
+              }
+            } catch (error) {
+              console.error('Error parsing date:', trabajo.fecha_ingreso, error);
+              return 'Error en fecha';
+            }
+          })() : 
+          'Sin fecha'
+      }));
+
+      // Guardar todos los trabajos y solo los 3 recientes
+      setAllWork(todosTrabajosFormateados);
+      setRecentWork(todosTrabajosFormateados.slice(0, 3));
+      setFilteredWork(todosTrabajosFormateados.slice(0, 3));
       setLoading(false)
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -228,40 +489,182 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-black">
               Trabajos Recientes
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-1" />
-                Nuevo Trabajo
-              </Button>
+              <div className="flex items-center gap-3">
+                <Select
+                  value={filterType}
+                  onValueChange={(value) => setFilterType(value)}
+                >
+                  <SelectTrigger className="w-72 h-12 text-base px-10">
+                    <SelectValue placeholder="Filtrar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="marca">Por Marca</SelectItem>
+                    <SelectItem value="modelo">Por Modelo</SelectItem>
+                    <SelectItem value="cliente">Por Cliente</SelectItem>
+                    <SelectItem value="estado">Por Estado</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {filterType && filterType !== 'todos' && availableFilterOptions.length > 0 && (
+                  <Select
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                  >
+                    <SelectTrigger className="w-96 h-12 text-base px-10">
+                      <SelectValue placeholder={`Seleccionar ${filterType}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      {availableFilterOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {filterType && filterType !== 'todos' && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setFilterType('')
+                      setFilterValue('todos')
+                    }}
+                    className="h-10"
+                  >
+                    Limpiar
+                  </Button>
+                )}
+
+                <Button 
+                  size="sm" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setShowNewWorkModal(true)}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Nuevo Trabajo
+                </Button>
+              </div>
             </CardTitle>
             <CardDescription className="text-black">
               Últimos trabajos registrados en el sistema
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {recentWork.length > 0 ? (
+            {filteredWork.length > 0 ? (
               <div className="space-y-4">
-                {recentWork.map((trabajo) => (
-                  <div key={trabajo.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-medium text-black">{trabajo.auto}</p>
-                          <p className="text-sm text-black">Cliente: {trabajo.cliente}</p>
+                <div className={`space-y-4 ${showAllWorks ? 'max-h-96 overflow-y-auto' : ''}`}>
+                  {filteredWork.map((trabajo) => (
+                    <div key={trabajo.id} className="border rounded-lg overflow-hidden">
+                      {/* Header del trabajo - siempre visible */}
+                      <div 
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                        onClick={() => toggleExpand(trabajo.id)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <p className="font-medium text-black">{trabajo.auto}</p>
+                              <p className="text-sm text-black">Cliente: {trabajo.cliente}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <Badge className={getEstadoBadgeColor(trabajo.estado)}>
+                            {trabajo.estado}
+                          </Badge>
+                          <span className="text-sm text-black">{trabajo.fecha}</span>
+                          {expandedWork === trabajo.id ? (
+                            <ChevronUp className="h-4 w-4 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          )}
                         </div>
                       </div>
+
+                      {/* Detalles expandidos */}
+                      {expandedWork === trabajo.id && (
+                        <div className="px-4 pb-4 border-t bg-gray-50">
+                          <div className="py-3 space-y-2">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <span className="text-sm font-medium text-black">Notas:</span>
+                                <p className="text-sm text-black">{trabajo.notas || 'Sin notas'}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-black">Costo Mano de Obra:</span>
+                                <p className="text-sm text-black">
+                                  ${trabajo.costo_mano_obra ? Number(trabajo.costo_mano_obra).toLocaleString() : '0'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-black">Fecha de Ingreso:</span>
+                                <p className="text-sm text-black">{trabajo.fecha}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-black">Fecha de Egreso:</span>
+                                <p className="text-sm text-black">{trabajo.fecha_egreso || 'Pendiente'}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Botones de acción */}
+                            <div className="flex justify-end space-x-2 mt-4 pt-3 border-t">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditWork(trabajo)
+                                }}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Editar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteWork(trabajo.id)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Eliminar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <Badge className={getEstadoBadgeColor(trabajo.estado)}>
-                        {trabajo.estado}
-                      </Badge>
-                      <span className="text-sm text-black">{trabajo.fecha}</span>
-                    </div>
+                  ))}
+                </div>
+                
+                {/* Botón mostrar todos/menos */}
+                {allWork.length > 3 && (
+                  <div className="text-center pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAllWorks(!showAllWorks)}
+                      className="w-full"
+                    >
+                      {showAllWorks ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-2" />
+                          Mostrar menos trabajos
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                          Mostrar todos los trabajos ({allWork.length})
+                        </>
+                      )}
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             ) : (
               <div className="text-center py-8 text-black">
-                No hay trabajos recientes
+                {(filterType !== 'todos' && filterValue !== 'todos') ? 'No se encontraron trabajos con ese criterio' : 'No hay trabajos recientes'}
               </div>
             )}
           </CardContent>
@@ -306,6 +709,192 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modal para nuevo trabajo */}
+      <Dialog open={showNewWorkModal} onOpenChange={setShowNewWorkModal}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Nuevo Trabajo</DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowNewWorkModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <DialogDescription>
+              Crea un nuevo trabajo en el sistema
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="auto">Vehículo</Label>
+              <Select
+                value={newWork.auto_id}
+                onValueChange={(value) => setNewWork({...newWork, auto_id: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un vehículo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {autos.map((auto) => (
+                    <SelectItem key={auto.id} value={auto.id.toString()}>
+                      {auto.marca} {auto.modelo} ({auto.patente})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="estado">Estado</Label>
+              <Select
+                value={newWork.estado_id}
+                onValueChange={(value) => setNewWork({...newWork, estado_id: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estados.map((estado) => (
+                    <SelectItem key={estado.id} value={estado.id.toString()}>
+                      {estado.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="notas">Notas</Label>
+              <Input
+                id="notas"
+                placeholder="Descripción del trabajo..."
+                value={newWork.notas}
+                onChange={(e) => setNewWork({...newWork, notas: e.target.value})}
+                className="bg-white text-black border-gray-300"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="costo">Costo Mano de Obra</Label>
+              <Input
+                id="costo"
+                type="number"
+                placeholder="0.00"
+                value={newWork.costo_mano_obra}
+                onChange={(e) => setNewWork({...newWork, costo_mano_obra: e.target.value})}
+                className="bg-white text-black border-gray-300"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowNewWorkModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCreateWork}
+                disabled={!newWork.auto_id || !newWork.estado_id}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Crear Trabajo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Editar Trabajo */}
+      <Dialog open={showEditWorkModal} onOpenChange={setShowEditWorkModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Trabajo</DialogTitle>
+            <DialogDescription>
+              Modifica los detalles del trabajo seleccionado.
+            </DialogDescription>
+            <Button
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+              onClick={() => setShowEditWorkModal(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-auto">Vehículo</Label>
+              <Input
+                id="edit-auto"
+                value={editingWork ? editingWork.auto : ''}
+                disabled
+                className="bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-estado">Estado</Label>
+              <Select
+                value={editWork.estado_id}
+                onValueChange={(value) => setEditWork({...editWork, estado_id: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estados.map((estado) => (
+                    <SelectItem key={estado.id} value={estado.nombre}>
+                      {estado.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-notas">Notas</Label>
+              <Input
+                id="edit-notas"
+                placeholder="Notas del trabajo"
+                value={editWork.notas}
+                onChange={(e) => setEditWork({...editWork, notas: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-costo">Costo Mano de Obra</Label>
+              <Input
+                id="edit-costo"
+                type="number"
+                placeholder="0.00"
+                value={editWork.costo_mano_obra}
+                onChange={(e) => setEditWork({...editWork, costo_mano_obra: e.target.value})}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowEditWorkModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateWork}
+                disabled={!editWork.estado_id}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                Actualizar Trabajo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -17,17 +17,33 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const data = await req.json();
-  const trabajo = await prisma.trabajos.update({
-    where: { id: parseInt(id) },
-    data,
-  });
-  return NextResponse.json(trabajo);
+  try {
+    const { id } = await params;
+    const data = await req.json();
+    const trabajo = await prisma.trabajos.update({
+      where: { id: parseInt(id) },
+      data,
+    });
+    return NextResponse.json(trabajo);
+  } catch (error: any) {
+    console.error('Error al actualizar trabajo:', error);
+    return NextResponse.json(
+      { error: "Error al actualizar el trabajo", details: error.message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  await prisma.trabajos.delete({ where: { id: parseInt(id) } });
-  return NextResponse.json({ message: "Trabajo eliminado" });
+  try {
+    const { id } = await params;
+    await prisma.trabajos.delete({ where: { id: parseInt(id) } });
+    return NextResponse.json({ message: "Trabajo eliminado" });
+  } catch (error: any) {
+    console.error('Error al eliminar trabajo:', error);
+    return NextResponse.json(
+      { error: "Error al eliminar el trabajo", details: error.message },
+      { status: 500 }
+    );
+  }
 }
